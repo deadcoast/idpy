@@ -112,15 +112,15 @@ def get_directory_path(directory_path: str) -> str:
         raise ValueError("Invalid directory path: directory_path must be a string")
     try:
         if not os.path.isdir(directory_path):
-            return "Default directory path"
+            raise FileNotFoundError(f"Directory does not exist: {directory_path}")
         if not os.access(directory_path, os.R_OK):
-            return "Error: Directory is not readable"
+            raise PermissionError("Directory is not readable")
         return directory_path
-    except ValueError as e:
-        return "Error: Invalid directory path"
+    except ValueError:
+        raise
     except Exception as e:
-        print("An unexpected error occurred: {e}")
-        return "Default value or meaningful message"
+        logging.error(f"An unexpected error occurred: {e}")
+        raise
 
 
 input_dir = get_directory_path("Enter the path to the import directory: ")
