@@ -53,9 +53,9 @@ class CalculateTreeMethod(Transformer):
         try:
             return float(args[0])
         except TypeError as e:
-            raise TypeError("Invalid number type")
+            raise TypeError("Invalid number type") from e
         except ValueError as e:
-            raise ValueError("Invalid number format")
+            raise ValueError("Invalid number format") from e
 
 
 parser = Lark(grammar, parser='lalr', transformer=CalculateTreeMethod())
