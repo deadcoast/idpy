@@ -322,9 +322,6 @@ class DivisionByZeroError(Exception):
         Args:
             error_message (str, optional): The error message. Defaults to None.
             logger (Logger, optional): An instance of a logger. Defaults to None.
-
-        Returns:
-            str: The error message.
         """
         if logger is None:
             # code to initialize a standard logger
@@ -333,16 +330,13 @@ class DivisionByZeroError(Exception):
         if error_message is None:
             error_message = self.message
 
-        error_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        error_function = traceback.extract_stack()[-2].name
+        error_time = datetime.datetime.utcnow().isoformat()
+        error_function = inspect.currentframe().f_back.f_code.co_name
         error_variables = self.get_error_variables()  # Custom method to get relevant variables
 
-        log_message = ("Error occurred at {error_time} in function {error_function}. Error message: {error_message}. "
-                       "Relevant variables: {error_variables}")
+        log_message = f"Error occurred at {error_time} in function {error_function}. Error message: {error_message}. Relevant variables: {error_variables}"
 
-        logging.error(log_message)
-
-        return error_message
+        logger.error(log_message)
 
     def get_error_variables(self):
         """
