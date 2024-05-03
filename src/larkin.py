@@ -1,12 +1,15 @@
-import wrapt
-import sys
+import ast
 from functools import wraps
-from typing import List, Union
-import prompt
-import os
-
+from sys import maxsize
+from sys import float_info
 import argparse
+import math
+import os
+import sys
+
+import wrapt
 from lark import Lark, Transformer
+from typing import List, Union
 
 grammar = """
 ?start: expression
@@ -31,19 +34,32 @@ input_dir = args.import_dir
 
 output_dir = args.export_dir,
 if not os.path.exists(input_dir):
-    print(f"Directory {input_dir} does not exist")
+    print("Directory {input_dir} does not exist")
     exit(1)
 
 export_directory = "/ path / to / export"
 
 if not os.path.exists(export_directory):
     os.makedirs(export_directory)
-    
+
 parser = Lark(grammar, parser='lalr', transformer=Transformer)
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
 
+import tokenize
 
+def execfile(file, glob=None, loc=None):
+    if glob is None:
+        glob = globals()
+    if loc is None:
+        loc = glob
+
+    with tokenize.open(file) as stream:
+        contents = stream.read()
+
+    tree = ast.parse(contents, filename=file, mode='exec')
+
+    exec(compile(tree, filename=file, mode='exec'), glob, loc)
 
 def get_directory_path(directory_path: str) -> str:
     """
@@ -67,7 +83,7 @@ def get_directory_path(directory_path: str) -> str:
     except ValueError as e:
         return "Error: Invalid directory path"
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print("An unexpected error occurred: {e}")
         return "Default value or meaningful message"
 
 
@@ -291,30 +307,174 @@ class InvalidArgumentsError(Exception):
     message -- explanation of the error
     """
 
-    def __init__(self, message):
-        super().__init__(message)
+    def __init__(self, message: str):
+        """
+        Initialize the class instance.
 
-    def __str__(self):
-        return "Invalid arguments provided."
+        Args:
+            message (str): The message to be stored in the instance.
 
-    def __repr__(self):
-        return f"InvalidArgumentsError()"
+        Returns:
+            None
+        """
+        self.__message = message
+
+    @property
+    def message(self):
+        return self.__message
+
+    @message.setter
+    def message(self, message):
+        self.__message = message
+
+    @message.deleter
+    def message(self):
+        del self.__message
+
+    def __call__(self):
+        return self.__message
 
     def log_error(self):
         # code to log the error
         pass
 
+
 class CalculateTree(Transformer):
     def validate_args(func):
-        @wrapt.decorator
+
+        def wrapper(self, *args: Union[int, float]):
+            if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
+                raise InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
+            return func(self, *args)  # Call the decorated function with the validated arguments
+
+        return wrapper
+
+    def validate_args_with_zero_check(func):
+
         def wrapper(self, *args: Union[int, float]):
             if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
                 raise InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
             if args[1] == 0:
                 raise ValueError("Error: Division by zero")
             return func(self, *args)  # Call the decorated function with the validated arguments
+
         return wrapper
 
+    def validate_args_with_zero_check_and_log_error(func):
+
+        def wrapper(self, *args: Union[int, float]):
+            if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
+                raise InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
+            if args[1] == 0:
+                raise ValueError("Error: Division by zero")
+            return func(self, *args)  # Call the decorated function with the validated arguments
+
+        return wrapper
+
+    def validate_args_with_zero_check_and_log_error_and_raise_exception(func):
+
+        def wrapper(self, *args: Union[int, float]):
+            if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
+                raise InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
+            if args[1] == 0:
+                raise ValueError("Error: Division by zero")
+            return func(self, *args)  # Call the decorated function with the validated arguments
+
+        return wrapper
+    
+    def add(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        """
+        Adds two numbers.
+
+        Args:
+            arg1: The first number.
+            arg2: The second number.
+
+        Returns:
+            The sum of the two numbers.
+
+        Raises:
+            ValueError: If the sum exceeds the maximum limit of int or float.
+            TypeError: If either of the arguments is not a number.
+        """
+        result = arg1 + arg2
+
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+
+        return result
+        
+    def sub(self, args: List[Union[int, float]]) -> Union[int, float]:
+        arg1, arg2 = args
+        result = arg1 - arg2
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if isinstance(result, int) and (result > sys.maxsize or result < -sys.maxsize):
+            raise ValueError("Error: Subtraction result exceeds maximum limit of int")
+        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
+            raise ValueError("Error: Subtraction result exceeds maximum limit of float")
+        return result
+
+    def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
+        arg1, arg2 = args
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = arg1 * arg2
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Multiplication result exceeds maximum limit of int")
+        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
+            raise ValueError("Error: Multiplication result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError("Error: Multiplication result is below the minimum limit of int")
+        elif isinstance(result, float) and (result > -sys.float_info.max or result < sys.float_info.max):
+            raise ValueError("Error: Multiplication result is below the minimum limit of float")
+        return result
+        
+    def number(self, args: List[Union[int, float]]) -> Union[int, float]:
+        """
+        Returns the first element of the input list.
+
+        Args:
+            args (List[Union[int, float]]): The list of numbers.
+
+        Returns:
+            Union[int, float]: The first element of the list.
+
+        Raises:
+            ValueError: If the list is empty.
+            ValueError: If the list contains more than one element.
+            TypeError: If the list contains a non-numeric value.
+        """
+        if not args:
+            raise ValueError("Error: Empty list of arguments")
+        if len(args) != 1:
+            raise ValueError("Error: Expected exactly 1 argument")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        return args[0]
+
+    @validate_args
+    def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
+        arg1, arg2 = args
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = arg1 ** arg2
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
+        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError("Error: Exponentiation result is below the minimum limit of int")
+        elif isinstance(result, float) and (result > -sys.float_info.max or result < sys.float_info.max):
+            raise ValueError("Error: Exponentiation result is below the minimum limit of float")
+        return result
+        
     @validate_args
     def add(self, args: List[Union[int, float]]) -> Union[int, float]:
         arg1, arg2 = args
@@ -330,108 +490,116 @@ class CalculateTree(Transformer):
             raise ValueError("Error: Operands cannot be None")
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
             raise TypeError("Invalid operands")  # Include a check for operands not being numbers
-    @validate_args
-    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
-        try:
-            return args[0] / args[1]
-        except ZeroDivisionError as e:
-            raise ValueError("Error: Division by zero") from e
-        operand1, operand2 = args
-    def number(self, args: List[Union[int, float]]) -> int:
-        try:
-            return int(args[0])
-        except TypeError as e:
-            raise TypeError("Invalid number type") from e
-        except ValueError as e:
-            raise ValueError("Invalid number format") from e
-        except TypeError as e:
-            raise ValueError("Error: Invalid operands") from e
 
-    @validate_args
+    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if len(args) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if args[1] == 0:
+            raise ValueError("Error: Division by zero")
+        if isinstance(args[0], int) and isinstance(args[1], int):
+            return args[0] // args[1]
+        if isinstance(args[0], float) and isinstance(args[1], float):
+            return args[0] / args[1]
+        return args[0] / args[1]
+
+    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if len(args) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if args[1] == 0:
+            raise ValueError("Error: Division by zero")
+        return args[0] / args[1]
+
+    def __lt__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
+        return arg1 < arg2
+
+    def __gt__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
+        return arg1 > arg2
+
+    def __le__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
+        return arg1 <= arg2
+    def sub(self, args: List[Union[int, float]]) -> Union[int, float]:
+        arg1, arg2 = args
+        result = arg1 - arg2
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Subtraction result exceeds maximum limit of int")
+        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
+            raise ValueError("Error: Subtraction result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError("Error: Subtraction result is below the minimum limit of int")
+        elif isinstance(result, float) and (result > -sys.float_info.max or result < sys.float_info.max):
+            raise ValueError("Error: Subtraction result is below the minimum limit of float")
+        if arg1 is None or arg2 is None:
+            raise ValueError("Error: Operands cannot be None")
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands")
+        return result
+
     def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
         arg1, arg2 = args  # Suggestion 1: Unpack the list into two variables for better readability
         result = arg1 * arg2
         if isinstance(result, int) and result > sys.maxsize:
-            raise ValueError("Error: Multiplication result exceeds maximum limit of int")  # Suggestion 2: Include a check for multiplication result exceeding maximum limit of int or float
+            raise ValueError(
+                "Error: Multiplication result exceeds maximum limit of int")  # Suggestion 2: Include a check for multiplication result exceeding maximum limit of int or float
         elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
             raise ValueError("Error: Multiplication result exceeds maximum limit of float")
         if isinstance(result, (int, float)):
             min_limit = min(int, float)
             if result < min_limit:
-                raise ValueError("Error: Result is below the minimum limit of int or float")  # Suggestion 3: Include a check for multiplication result below minimum limit of int or float
+                raise ValueError(
+                    "Error: Result is below the minimum limit of int or float")  # Suggestion 3: Include a check for multiplication result below minimum limit of int or float
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
             raise TypeError("Invalid operands")  # Suggestion 4: Include a check for operands not being numbers
         if None in args:
             raise ValueError("Error: Operands cannot be None")  # Suggestion 5: Include a check for operands being None
         return result
 
-
-    def validate_args(args): # Suggestion 6: Add type hints to the function signature
-        if len(args) != 2:
-            raise ValueError("Expected exactly 2 arguments")
+    def validate_args(args):
+        if args is None:
+            raise ValueError("Error: Arguments cannot be None")
+        if not isinstance(args, list):
+            raise TypeError("Error: Arguments must be a list")
+        if len(args) == 0:
+            raise ValueError("Error: Arguments list cannot be empty")
         for arg in args:
             if not isinstance(arg, (int, float)):
-                raise TypeError("Invalid operands")
+                raise TypeError("Error: Invalid argument type. Expected int or float.")
+        return args
+
+    def __lt__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
+        args = self.validate_args([arg1, arg2])
+        if not isinstance(args[0], (int, float)) or not isinstance(args[1], (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if args[0] is None or args[1] is None:
+            raise ValueError("Error: Operands cannot be None")
+        if args[0] < args[1]:
+            raise ValueError("Comparison is not possible")
         return True
 
-    @validate_args
-    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
-        try:
-            return args[0] / args[1]
-        except ZeroDivisionError as e:
-            raise ValueError("Error: Division by zero")(e)
-        min_limit = min(int, float)
-        if result < min_limit:
-            raise ValueError("Error: Result is below the minimum limit of int or float")
+    def __gt__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
         if arg1 is None or arg2 is None:
             raise ValueError("Error: Operands cannot be None")
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-            raise TypeError("Invalid operands")
-        return result
+            raise TypeError("Invalid operands. Expected int or float.")
+        return arg1 > arg2
 
-    def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
-        arg1, arg2 = args
-        result = arg1 * arg2
-        if isinstance(result, int) and result > sys.maxsize:
-            raise ValueError("Error: Multiplication result exceeds maximum limit of int")
-        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
-            raise ValueError("Error: Multiplication result exceeds maximum limit of float")
-        min_limit = min(int, float)
-        if result < min_limit:
-            raise ValueError("Error: Result is below the minimum limit of int or float")
+    def __le__(self, arg1: Union[int, float], arg2: Union[int, float]) -> bool:
         if arg1 is None or arg2 is None:
             raise ValueError("Error: Operands cannot be None")
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-            raise TypeError("Invalid operands")
-        return result
+            raise TypeError("Invalid operands. Expected int or float.")
+        return arg1 <= arg2
 
-    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
-        try:
-            return args[0] / args[1]
-        except ZeroDivisionError as e:
-            raise ValueError("Error: Division by zero") from e
-        operand1, operand2 = args
-        result = operand1 / operand2
-        if isinstance(result, int) and result > sys.maxsize:
-            raise ValueError("Error: Division result exceeds maximum limit of int")
-        elif isinstance(result, float) and (result > sys.float_info.max or result < -sys.float_info.max):
-            raise ValueError("Error: Division result exceeds maximum limit of float")
-        min_limit = min(int, float)
-        if result < min_limit:
-            raise ValueError("Error: Result is below the minimum limit of int or float")
-        if operand1 is None or operand2 is None:
-            raise ValueError("Error: Operands cannot be None")
-        if not isinstance(operand1, (int, float)) or not isinstance(operand2, (int, float)):
-            raise TypeError("Invalid operands")
-        return result
-
-    def number(self, args: List[Union[int, float]]) -> int:
-        try:
-            return int(args[0])
-        except TypeError as e:
-            raise TypeError("Invalid number type") from e
-        except ValueError as e:
-            raise ValueError("Invalid number format")(e) from e
+    def __ge__(self, args: List[Union[int, float]]) -> bool:
+        args = self.validate_args(args)
+        return args[0] >= args[1]
 
     def __call__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return args[0]
@@ -493,149 +661,107 @@ class CalculateTree(Transformer):
     def __float__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return float(args[0])
 
-    def __str__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return str(args[0])
+    def __lt__(self, args: List[Union[int, float]]) -> bool:
+        """
+        Check if the first element in args is less than the second element.
 
-    def __repr__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return repr(args[0])
+        Args:
+            args (List[Union[int, float]]): A list of two elements.
 
-    def __eq__(self, args: List[Union[int, float]]) -> Union[int, float]:
+        Returns:
+            bool: True if the first element is less than the second element, False otherwise.
+
+        Raises:
+            ValueError: If args is None or if it does not have exactly 2 elements.
+            TypeError: If the elements in args are not of type int or float.
+        """
+        if args is None:
+            raise ValueError("Error: Arguments cannot be None")
+        if len(args) != 2:
+            raise ValueError("Expected exactly 2 arguments")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        arg1, arg2 = args
+        return arg1 < arg2
+
+    def __eq__(self, args: List[Union[int, float]]) -> bool:
         return args[0] == args[1]
 
-    def __ne__(self, args: List[Union[int, float]]) -> Union[int, float]:
+    def __ne__(self, args: List[Union[int, float]]) -> bool:
         return args[0] != args[1]
 
-    def __lt__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] < args[1]
+    def calculate(args: List[Union[int, float]]) -> Union[int, float]:
+        """
+        Calculate the result of the given expression.
 
-    def __gt__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] > args[1]
+        Args:
+            args (List[Union[int, float]]): A list of two elements.
 
-    def __le__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] <= args[1]
+        Returns:
+            Union[int, float]: The result of the expression.
 
-    def __ge__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] >= args[1]
+        Raises:
+            ValueError: If args is None or if it does not have exactly 2 elements.
+            TypeError: If the elements in args are not of type int or float.
+        """
+        if args is None:
+            raise ValueError("Error: Arguments cannot be None")
+        if len(args) != 2:
+            raise ValueError("Expected exactly 2 arguments")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        arg1, arg2 = args
+        return arg1 + arg2
 
     def add(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] + args[1]
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if len(args) == 0:
+            raise ValueError("Error: Empty list of arguments")
+        if len(args) == 1:
+            return args[0]
+        return sum(args)
 
     def sub(self, args: List[Union[int, float]]) -> Union[int, float]:
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if len(args) == 0:
+            raise ValueError("Error: Empty list of arguments")
+        if len(args) == 1:
+            return -args[0]
         return args[0] - args[1]
 
     def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] * args[1]
+        if None in args:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if len(args) == 0:
+            raise ValueError("Error: Empty list of arguments")
+        if len(args) == 1:
+            return args[0]
+        result = 1
+        for arg in args:
+            result *= arg
+        return result
 
-    def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] ** args[1]
+grammar = """
+    start: expr
+    expr: atom
+        | expr "+" atom   -> add
+        | expr "-" atom   -> sub
+        | expr "*" atom   -> mul
+        | expr "/" atom   -> div
+        | expr "^" atom   -> pow
+    atom: NUMBER         -> number
+        | "(" expr ")"
+    %import common.NUMBER
+    %import common.WS
+    %ignore WS
+"""
 
-    def div(self, args: List[Union[int, float]]) -> Union[int, float]:
-        try:
-            return args[0] / args[1]
-        except ZeroDivisionError as e:
-            raise ValueError("Error: Division by zero") from e
-
-    def number(self, args: List[Union[int, float]]) -> int:
-        try:
-            return int(args[0])
-        except TypeError as e:
-            raise TypeError("Invalid number type") from e
-        except ValueError as e:
-            raise ValueError("Invalid number format")(e) from e
-
-
-
-    def __pow__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return self.pow(args)
-
-    def __rpow__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return self.pow(args)
-
-    def __truediv__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return self.div(args)
-
-    def __rtruediv__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return self.div(args)
-
-    def __neg__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return -args[0]
-
-    def __pos__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return +args[0]
-
-    def __invert__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return ~args[0]
-
-    @validate_args
-    def calculate(args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0]
-
-    @validate_args
-    def add(args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] + args[1]
-
-    @validate_args
-    def sub(args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] - args[1]
-
-    @validate_args
-    def mul(args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] * args[1]
-
-    @validate_args
-    def div(args: List[Union[int, float]]) -> Union[int, float]:
-        try:
-            return args[0] / args[1]
-        except ZeroDivisionError as e:
-            raise ValueError("Error: Division by zero") from e
-
-    @validate_args
-    def pow(args: List[Union[int, float]]) -> Union[int, float]:
-        return args[0] ** args[1]
-
-    @validate_args
-    def number(args: List[Union[int, float]]) -> int:
-        try:
-            return int(args[0])
-        except TypeError as e:
-            raise TypeError("Invalid number type") from e
-        except ValueError as e:
-            raise ValueError("Invalid number format")(e) from e
-
-
-class CalculateTree(Transformer):
-def __init__(self):
-    self.result = None
-
-def __call__(self, args: List[Union[int, float]]) -> Union[int, float]:
-    return args[0]
-
-def add(self, args: List[Union[int, float]]) -> Union[int, float]:
-    return args[0] + args[1]
-
-def sub(self, args: List[Union[int, float]]) -> Union[int, float]:
-    return args[0] - args[1]
-
-def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
-    return args[0] * args[1]
-
-def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
-    return args[0] ** args[1]
-def div(self, args: List[Union[int, float]]) -> Union[int, float]:
-    try:
-        return args[0] / args[1]
-    except ZeroDivisionError as e:
-        raise ValueError("Error: Division by zero") from e
-
-def number(self, args: List[Union[int, float]]) -> int:
-    try:
-        return int(args[0])
-    except TypeError as e:
-        raise TypeError("Invalid number type") from e
-    except ValueError as e:
-        raise ValueError("Invalid number format")(e) from e
-
-
-parser = Lark(grammar, parser='lalr', transformer=CalculateTree())
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11
+parser = Lark(grammar, parser='lalr', start='start')
