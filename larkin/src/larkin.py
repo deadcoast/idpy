@@ -505,6 +505,63 @@ parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
 
+grammar = """
+    start: expr
+    expr: atom
+        | expr "+" atom   -> add
+        | expr "-" atom   -> sub
+        | expr "*" atom   -> mul
+        | expr "/" atom   -> div
+        | expr "^" atom   -> pow
+    atom: NUMBER         -> number
+        | "(" expr ")"
+    %import common.NUMBER
+    %import common.WS
+    %ignore WS
+"""
+
+parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
+result = parser.parse("2 + 3 * (4 - 1)")
+print(result)  # Output: 11
+
+grammar = """
+    start: expr
+    expr: atom
+        | expr "+" atom   -> add
+        | expr "-" atom   -> sub
+        | expr "*" atom   -> mul
+        | expr "/" atom   -> div
+        | expr "^" atom   -> pow
+    atom: NUMBER         -> number
+        | "(" expr ")"
+    %import common.NUMBER
+    %import common.WS
+    %ignore WS
+"""
+
+parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
+result = parser.parse("2 + 3 * (4 - 1)")
+print(result)  # Output: 11
+
+grammar = """
+    start: expr
+    expr: atom
+        | expr "+" atom   -> add
+        | expr "-" atom   -> sub
+        | expr "*" atom   -> mul
+        | expr "/" atom   -> div
+        | expr "^" atom   -> pow
+    atom: NUMBER         -> number
+        | "(" expr ")"
+    %import common.NUMBER
+    %import common.WS
+    %ignore WS
+"""
+
+parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
+result = parser.parse("2 + 3 * (4 - 1)")
+print(result)  # Output: 11
+
 
 class MathFloorFunctions:
     @staticmethod
