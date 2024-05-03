@@ -1,18 +1,14 @@
-import logging
-import traceback
-import datetime
+from numbers import Number
 import argparse
 import ast
+import datetime
+import logging
 import math
 import os
 import sys
 import tokenize
+import traceback
 from functools import wraps
-import tokenize
-from functools import wraps
-
-from lark import Lark, Transformer
-from typing import List, Union
 
 # src/larkin.py
 from lark import Lark, Transformer
@@ -321,7 +317,8 @@ class DivisionByZeroError(Exception):
         error_function = traceback.extract_stack()[-2].name
         error_variables = self.get_error_variables()  # Custom method to get relevant variables
 
-        log_message = f"Error occurred at {error_time} in function {error_function}. Error message: {error_message}. Relevant variables: {error_variables}"
+        log_message = ("Error occurred at {error_time} in function {error_function}. Error message: {error_message}. "
+                       "Relevant variables: {error_variables}")
 
         logging.error(log_message)
 
@@ -379,11 +376,12 @@ class CalculateTree(Transformer):
 
         Raises:
             TypeError: If the input is not of type int or float.
+            ValueError: If the input is None.
         """
-        if arg == None:
-            return None
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
         if not isinstance(arg, (int, float)):
-            return float(arg)
+            raise TypeError("Invalid type. Expected int or float.")
         return arg
 
     def __call__(self, args: List[Union[int, float]]) -> Union[int, float]:
@@ -569,67 +567,148 @@ class CalculateTree(Transformer):
             raise TypeError("Invalid operands. Expected int or float.")
         return round(args[0])
 
-    def __floor__(self, args: List[Union[int, float]]) -> Union[int, float]:
+class MathFloorFunctions:
+    def __floor__(self, args: List[Union[int, float]]) -> int:
+        """
+        Returns the floor value of the first element in the args list.
+
+        Args:
+            args (List[Union[int, float]]): The list of arguments.
+
+        Returns:
+            int: The floor value of the first element in the args list.
+
+        Raises:
+            ValueError: If args is None or if the length of args is not 1.
+            TypeError: If the first element in args is not an int or float.
+        """
         if args is None:
             raise ValueError("Error: Arguments cannot be None")
         if len(args) != 1:
             raise ValueError("Expected exactly 1 argument")
-        if not all(isinstance(arg, (int, float)) for arg in args):
-            raise TypeError("Invalid operands. Expected int or float.")
-        return math.floor(args[0])
-
-    def __ceil__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None:
-            raise ValueError("Error: Arguments cannot be None")
-        if len(args) != 1:
-            raise ValueError("Expected exactly 1 argument")
-        if not all(isinstance(arg, (int, float)) for arg in args):
-            raise TypeError("Invalid operands. Expected int or float.")
-        return math.ceil(args[0])
-
-    def __neg__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None or not args:
-            raise ValueError("Error: Arguments cannot be None or empty")
         if not isinstance(args[0], (int, float)):
-            raise TypeError("Invalid operand. Expected int or float.")
-        if len(args) != 1:
-            raise ValueError("Error: Expected exactly 1 argument")
-        try:
-            return -args[0]
-        except Exception as e:
-            raise ValueError(
-                "Error: Negation operation failed. Invalid operand or unsupported type."
-            )(e)
-
-    def __pos__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None:
-            raise ValueError("Error: Arguments cannot be None")
-        if not args:
-            raise ValueError("Error: Empty argument list")
-        if not isinstance(args[0], (int, float)):
-            raise TypeError("Invalid operand. Expected int or float.")
-        if len(args) != 1:
-            return sum(args)
-        return +args[0]
-
-    def __int__(self, args: List[Union[int, float]]) -> Union[int, float]:
+            raise TypeError("Invalid operands. Expected int or float.")
         return int(args[0])
 
-    def __float__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return float(args[0])
+    def mod(self, arg1, arg2):
+        """
+        This method performs the modulo operation on two arguments.
 
-    def calculate(self) -> Union[int, float]:
-        if self is None:
-            raise ValueError("Error: Arguments cannot be None")
-        if len(self) != 2:
-            raise ValueError("Expected exactly 2 arguments")
-        if not all(isinstance(arg, (int, float)) for arg in args):
+        Args:
+            arg1 (int or float): The first argument.
+            arg2 (int or float): The second argument.
+
+        Returns:
+            float: The result of the modulo operation.
+
+        Raises:
+            ValueError: If the arguments are not of type int or float.
+            ZeroDivisionError: If the second argument is zero.
+
+        Example:
+            >>> obj = MathFunctions()
+            >>> obj.mod(5, 2)
+            1.0
+        """
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
-        arg1, arg2 = self
+        if arg2 == 0:
+            raise ValueError("Error: Division by zero")
+        return math.fmod(arg1, arg2)
+
+
+class MathFunctions:
+    def ceil(self, arg: Union[int, float]):
+        """
+        Returns the smallest integer greater than or equal to the given number.
+
+        Args:
+            arg: An int or float number.
+
+        Returns:
+            The smallest integer greater than or equal to the given number.
+
+        Raises:
+            ValueError: If arg is None.
+            TypeError: If arg is not an int or float.
+        """
+        if arg is None: 
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        return math.ceil(arg)
+
+    def trunc(self, arg: Union[int, float]):
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        return math.trunc(arg)
+
+    def sqrt(self, arg: Union[int, float]):
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        if arg < 0:
+            raise ValueError("Error: Cannot calculate square root of a negative number")
+        return math.sqrt(arg)
+
+    def log(self, arg: Union[int, float]):
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        if arg <= 0:
+            raise ValueError("Error: Cannot calculate logarithm of a non-positive number")
+        return math.log(arg)
+
+    def neg(self, arg: Union[int, float]) -> Union[int, float]:
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        return -arg
+
+    def pos(self, arg: Union[int, float]) -> Union[int, float]:
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid operand. Expected int or float.")
+        return +arg
+
+    def to_int(self, arg: Union[int, float]) -> int:
+        """
+        Convert the argument to an integer.
+
+        Args:
+            arg: The argument.
+
+        Returns:
+            The converted integer value.
+
+        Raises:
+            TypeError: If arg is not an int or float.
+        """
+        if not isinstance(arg, (int, float)):
+            raise TypeError(f"Invalid type. Expected int or float, received {type(arg).__name__}.")
+        return int(arg)
+
+    def to_float(self, arg: Union[int, float]) -> Union[int, float]:
+        if arg is None:
+            raise ValueError("Error: Argument cannot be None")
+        if not isinstance(arg, (int, float)):
+            raise TypeError("Invalid type. Expected int or float.")
+        return float(arg)
+
+    def calculate(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        if arg1 is None or arg2 is None:
+            raise ValueError("Error: Operands cannot be None")
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
         return arg1 + arg2
 
-    def sub(self, args: List[Union[int, float]]) -> Union[int, float]:
-        arg1, arg2 = args
+    def sub(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         result = arg1 - arg2
         if isinstance(result, int) and result > sys.maxsize:
             raise ValueError("Error: Subtraction result exceeds maximum limit of int")
@@ -643,29 +722,22 @@ class CalculateTree(Transformer):
                 result > -sys.float_info.max or result < sys.float_info.max
         ):
             raise ValueError("Error: Subtraction result is below the minimum limit of float")
-        if arg1 is None or arg2 is None:
-            raise ValueError("Error: Operands cannot be None")
-        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-            raise TypeError("Invalid operands")
         return result
 
-    def mul(self, args: List[Union[int, float]]) -> Union[int, float]:
+    def mul(self, *args: Union[int, float]) -> Union[int, float]:
         if None in args:
             raise ValueError("Error: Operands cannot be None")
         if not all(isinstance(arg, (int, float)) for arg in args):
             raise TypeError("Invalid operands. Expected int or float.")
         if not args:
             raise ValueError("Error: Empty list of arguments")
-        if len(args) == 1:
-            return args[0]
         result = 1
         for arg in args:
             result *= arg
         return 1 if result == 0 else result
 
-    def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
-        arg1, arg2 = args
-        if None in args:
+    def pow(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        if arg1 is None or arg2 is None:
             raise ValueError("Error: Operands cannot be None")
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
@@ -683,6 +755,13 @@ class CalculateTree(Transformer):
         ):
             raise ValueError("Error: Exponentiation result is below the minimum limit of float")
         return result
+
+    def mod(self, arg1: Union[int, float], arg2: Union[int, float]):
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if arg2 == 0:
+            raise ValueError("Error: Division by zero")
+        return arg1 % arg2
 
 
 grammar = """
