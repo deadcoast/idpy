@@ -1,6 +1,7 @@
 import argparse
 import ast
 import datetime
+import inspect
 import logging
 import math
 import os
@@ -112,14 +113,14 @@ def get_directory_path(directory_path: str) -> str:
         raise ValueError("Invalid directory path: directory_path must be a string")
     try:
         if not os.path.isdir(directory_path):
-            raise FileNotFoundError(f"Directory does not exist: {directory_path}")
+            raise FileNotFoundError("Directory does not exist: {directory_path}")
         if not os.access(directory_path, os.R_OK):
             raise PermissionError("Directory is not readable")
         return directory_path
     except ValueError:
         raise
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}")
+        logging.error("An unexpected error occurred: {e}")
         raise
 
 
@@ -243,7 +244,7 @@ class InvalidArgumentsError(Exception):
 
 
 def add_tree(args: List[Union[int, float]]) -> Union[int, float]:
-    if len(args) == 0:
+    if not args:
         raise ValueError("Error: Empty list of arguments")
     if any(arg is None for arg in args):
         raise TypeError("Error: Operands cannot be None")
@@ -323,18 +324,14 @@ class DivisionByZeroError(Exception):
             error_message (str, optional): The error message. Defaults to None.
             logger (Logger, optional): An instance of a logger. Defaults to None.
         """
-        if logger is None:
-            # code to initialize a standard logger
-            pass
-
         if error_message is None:
             error_message = self.message
 
-        error_time = datetime.datetime.utcnow().isoformat()
+        error_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
         error_function = inspect.currentframe().f_back.f_code.co_name
         error_variables = self.get_error_variables()  # Custom method to get relevant variables
 
-        log_message = f"Error occurred at {error_time} in function {error_function}. Error message: {error_message}. Relevant variables: {error_variables}"
+        log_message = "Error occurred at {error_time} in function {error_function}. Error message: {error_message}. Relevant variables: {error_variables}"
 
         logger.error(log_message)
 
@@ -405,9 +402,7 @@ class CalculateTree(Transformer):
             raise ValueError("Error: Empty argument list")
         if not isinstance(args[0], (int, float)):
             raise TypeError("Invalid type. Expected int or float.")
-        if len(args) != 1:
-            return sum(args)
-        return args[0]
+        return sum(args) if len(args) != 1 else args[0]
 
     def div(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
@@ -445,7 +440,7 @@ class CalculateTree(Transformer):
         return result
 
     def __add__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None or len(args) == 0:
+        if args is None or not args:
             raise ValueError("Error: Arguments cannot be None or empty")
         if len(args) != 2 or (not all(isinstance(arg, (int, float)) for arg in args)):
             raise ValueError("Error: Expected exactly 2 arguments of type int or float")
@@ -478,23 +473,23 @@ class CalculateTree(Transformer):
         try:
             return self.pow([arg2, arg1])
         except Exception as e:
-            raise ValueError("Error occurred during exponentiation: " + str(e))
+            raise ValueError(f"Error occurred during exponentiation: {str(e)}") from e
 
     def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
         # Suggestion 2: Reverse the order of arguments
         args = [args[1], args[0]]
-    
+
         try:
             # Suggestion 4: Validate input arguments
             if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
                 raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        
+
             # Original power operation code
             return self.__pow__(args)
-    
+
         except Exception as e:
             # Suggestion 3: Handle exceptions and provide meaningful error message
-            raise ValueError("Error occurred during exponentiation: " + str(e))
+            raise ValueError(f"Error occurred during exponentiation: {str(e)}") from e
     def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return self.__add__(args)
 
@@ -504,20 +499,20 @@ class CalculateTree(Transformer):
     def __truediv__(self, args: List[Union[int, float]]) -> Union[int, float]:
         try:
             return self.div(args)
-        except ZeroDivisionError:
-            raise ValueError("Error: Division by zero")
+        except ZeroDivisionError as e:
+            raise ValueError("Error: Division by zero")(e)
 
     def __rtruediv__(self, args: List[Union[int, float]]) -> Union[int, float]:
         try:
             return self.div(args)
-        except ZeroDivisionError:
-            raise ValueError("Error: Division by zero")
-        except TypeError:
-            raise TypeError("Invalid operands. Expected int or float.")
-        except ValueError:
-            raise ValueError("Invalid arguments.")
+        except ZeroDivisionError as e:
+            raise ValueError("Error: Division by zero")(e)
+        except TypeError as e:
+            raise TypeError("Invalid operands. Expected int or float.")(e)
+        except ValueError as e:
+            raise ValueError("Invalid arguments.")(e)
         except Exception as e:
-            raise ValueError("Error occurred during division: " + str(e) + ".")
+            raise ValueError("Error occurred during division: {str(e)}.")
 
     def __pow__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if len(args) != 2:
@@ -527,7 +522,7 @@ class CalculateTree(Transformer):
         try:
             return self.pow(args)
         except Exception as e:
-            raise ValueError("Error: Failed to perform exponentiation.")
+            raise ValueError("Error: Failed to perform exponentiation.") from e
 
     def __rmul__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
@@ -552,7 +547,7 @@ class CalculateTree(Transformer):
         try:
             return self.mod(args)
         except Exception as e:
-            raise ValueError("Error: Failed to perform modulo operation.")
+            raise ValueError("Error: Failed to perform modulo operation.") from e
 
     def __invert__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
@@ -580,6 +575,191 @@ class CalculateTree(Transformer):
         if not all(isinstance(arg, (int, float)) for arg in args):
             raise TypeError("Invalid operands. Expected int or float.")
         return round(args[0])
+    def mul(self) -> Union[int, float]:
+        if len(self) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = self[0] * self[1]
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Multiplication result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Multiplication result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError(
+                "Error: Multiplication result is below the minimum limit of int"
+            )
+        elif isinstance(result, float) and (
+                result > -sys.float_info.max or result < sys.float_info.max
+        ):
+            raise ValueError(
+                "Error: Multiplication result is below the minimum limit of float"
+            )
+        return result
+
+    def pow(self) -> Union[int, float]:
+        if len(self) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = self[0]**self[1]
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError(
+                "Error: Exponentiation result is below the minimum limit of int"
+            )
+        elif isinstance(result, float) and (
+                result > -sys.float_info.max or result < sys.float_info.max
+        ):
+            raise ValueError(
+                "Error: Exponentiation result is below the minimum limit of float"
+            )
+        return result
+
+    def div(self) -> Union[int, float]:
+        if len(self) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = self[0] / self[1]
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Division result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Division result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError(
+                "Error: Division result is below the minimum limit of int"
+            )
+        elif isinstance(result, float) and (
+                result > -sys.float_info.max or result < sys.float_info.max
+        ):
+            raise ValueError(
+                "Error: Division result is below the minimum limit of float"
+
+        )
+        return result
+
+    def mod(self) -> Union[int, float]:
+        if len(self) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = self[0] % self[1]
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Modulo result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Modulo result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError(
+                "Error: Modulo result is below the minimum limit of int"
+            )
+        elif isinstance(result, float) and (
+                result > -sys.float_info.max or result < sys.float_info.max
+        ):
+            raise ValueError(
+                "Error: Modulo result is below the minimum limit of float"
+            )
+        return result
+
+    def floor(self) -> Union[int, float]:
+        if len(self) != 1:
+            raise ValueError("Error: Expected exactly 1 argument")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        return math.floor(self[0])
+
+    class MathFunctions:
+
+        def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+            if arg1 is None or arg2 is None:
+                raise ValueError("Error: Arguments cannot be None")
+            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            if arg2 == 0:
+                raise ValueError("Error: Division by zero")
+            result = arg1 % arg2
+            return int(result) if isinstance(result, int) else result
+
+        def floor(self, arg1: Union[int, float]) -> Union[int, float]:
+            if arg1 is None:
+                raise ValueError("Error: Arguments cannot be None")
+            if not isinstance(arg1, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            result = math.floor(arg1)
+            return int(result) if isinstance(result, int) else result
+
+        def ceil(self, arg1: Union[int, float]) -> Union[int, float]:
+            if arg1 is None:
+                raise ValueError("Error: Arguments cannot be None")
+            if not isinstance(arg1, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            result = math.ceil(arg1)
+            return int(result) if isinstance(result, int) else result
+
+        def pow(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+            if arg1 is None or arg2 is None:
+                raise ValueError("Error: Operands cannot be None")
+            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            result = arg1 ** arg2
+            if isinstance(result, int) and result > sys.maxsize:
+                raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
+            elif isinstance(result, float) and (
+                    result > sys.float_info.max or result < -sys.float_info.max
+            ):
+                raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
+            if isinstance(result, int) and result < -sys.maxsize:
+                raise ValueError("Error: Exponentiation result is below the minimum limit of int")
+            elif isinstance(result, float) and (
+                    result > -sys.float_info.max or result < sys.float_info.max
+            ):
+                raise ValueError("Error: Exponentiation result is below the minimum limit of float")
+            return result
+
+    math = MathFunctions()
+
+    def ceil(self) -> Union[int, float]:
+        if len(self) != 1:
+            raise ValueError("Error: Expected exactly 1 argument")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        return math.ceil(self[0])
+
+    def floor(self) -> Union[int, float]:
+        if len(self) != 1:
+            raise ValueError("Error: Expected exactly 1 argument")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        return math.floor(self[0])
+
+    return MathFloorFunctions()
+
+
 
 class MathFloorFunctions:
     @staticmethod
@@ -634,9 +814,7 @@ class MathFloorFunctions:
             if arg2 == 0:
                 raise ValueError("Error: Division by zero")
             result = arg1 % arg2
-            if isinstance(result, int):
-                return int(result)
-            return result
+            return int(result) if isinstance(result, int) else result
 
 
 def ceil(arg: Union[int, float]) -> int:
