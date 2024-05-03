@@ -539,6 +539,11 @@ grammar = """
     %ignore WS
 """
 
+
+class CalculateTree:
+    pass
+
+
 parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
