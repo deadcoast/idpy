@@ -94,8 +94,7 @@ class InteractiveCLI:
         with open(self.start_path, 'r', encoding='utf-8') as file:
             for idx, section in enumerate(file.read().split("New chat")):
                 try:
-                    python_code = self.extract_python_from_text(section)
-                    if python_code:
+                    if python_code := self.extract_python_from_text(section):
                         self.save_to_file(python_code, idx)
                 except Exception as e:
                     logging.exception("Error saving file")
@@ -106,7 +105,7 @@ class InteractiveCLI:
         return '\n'.join(re.findall(r'```python\s+(.*?)\s+```', text, re.DOTALL))
 
     def save_to_file(self, code, index):
-        output_filename = "Chat{}_ExtractedPython.py".format(index + 1)
+        output_filename = f"Chat{index + 1}_ExtractedPython.py"
         output_path = os.path.join(self.end_path, output_filename)
         if not os.path.exists(output_path):
             try:
