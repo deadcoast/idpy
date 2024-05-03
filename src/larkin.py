@@ -1,4 +1,3 @@
-from numbers import Number
 import argparse
 import ast
 import datetime
@@ -36,6 +35,27 @@ parser.add_argument("--import-dir", type=str, help="Path to the import directory
 parser.add_argument("--export-dir", type=str, help="Path to the export directory")
 args = parser.parse_args()
 input_dir = args.import_dir
+output_dir = args.export_dir
+if not os.path.exists(input_dir):
+    print("Directory {input_dir} does not exist")
+    exit(1)
+
+export_directory = "/ path / to / export"
+
+if not os.path.exists(export_directory):
+    os.makedirs(export_directory)
+
+parser = Lark(grammar, parser="lalr", transformer=Transformer)
+result = parser.parse("2 + 3 * (4 - 1)")
+print(result)  # Output: 11
+
+grammar = """
+start: expression
+expression: term
+term: factor
+factor: NUMBER
+"""
+
 
 output_dir = (args.export_dir,)
 if not os.path.exists(input_dir):
@@ -568,7 +588,8 @@ class CalculateTree(Transformer):
         return round(args[0])
 
 class MathFloorFunctions:
-    def __floor__(self, args: List[Union[int, float]]) -> int:
+    @staticmethod
+    def __floor__(args: List[Union[int, float]]) -> int:
         """
         Returns the floor value of the first element in the args list.
 
@@ -590,62 +611,71 @@ class MathFloorFunctions:
             raise TypeError("Invalid operands. Expected int or float.")
         return int(args[0])
 
-    def mod(self, arg1, arg2):
-        """
-        This method performs the modulo operation on two arguments.
+    class MathFunctions:
 
-        Args:
-            arg1 (int or float): The first argument.
-            arg2 (int or float): The second argument.
+        def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+            """
+            This method performs the modulo operation on two arguments.
 
-        Returns:
-            float: The result of the modulo operation.
+            It raises a ValueError if the second argument is zero.
+            Args:
+                arg1 (int or float): The first argument.
+                arg2 (int or float): The second argument.
+            Returns:
+                int or float: The result of the modulo operation.
+            Raises:
+                ValueError: If the arguments are not of type int or float.
+                ValueError: If the second argument is zero.
+                ValueError: If `arg1` is `None`.
+                ValueError: If `arg2` is `None`.
+            Example:
+                >>> obj = MathFunctions()
+                >>> obj.mod(5, 2)
+                1
+            """
+            if arg1 is None or arg2 is None:
+                raise ValueError("Error: Arguments cannot be None")
+            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            if arg2 == 0:
+                raise ValueError("Error: Division by zero")
+            result = arg1 % arg2
+            if isinstance(result, int):
+                return int(result)
+            return result
 
-        Raises:
-            ValueError: If the arguments are not of type int or float.
-            ZeroDivisionError: If the second argument is zero.
 
-        Example:
-            >>> obj = MathFunctions()
-            >>> obj.mod(5, 2)
-            1.0
-        """
-        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-            raise TypeError("Invalid operands. Expected int or float.")
-        if arg2 == 0:
-            raise ValueError("Error: Division by zero")
-        return math.fmod(arg1, arg2)
+def ceil(arg: Union[int, float]) -> int:
+    """
+    Returns the smallest integer greater than or equal to the given number.
+
+    Args:
+        arg: An int or float number.
+
+    Returns:
+        The smallest integer greater than or equal to the given number.
+
+    Raises:
+        ValueError: If arg is None.
+        TypeError: If arg is not an int or float.
+    """
+    if arg is None: 
+        raise ValueError("Error: Argument cannot be None")
+    if not isinstance(arg, (int, float)):
+        raise TypeError("Invalid operand. Expected int or float.")
+    return math.ceil(arg)
 
 
 class MathFunctions:
-    def ceil(self, arg: Union[int, float]):
-        """
-        Returns the smallest integer greater than or equal to the given number.
 
-        Args:
-            arg: An int or float number.
-
-        Returns:
-            The smallest integer greater than or equal to the given number.
-
-        Raises:
-            ValueError: If arg is None.
-            TypeError: If arg is not an int or float.
-        """
-        if arg is None: 
-            raise ValueError("Error: Argument cannot be None")
-        if not isinstance(arg, (int, float)):
-            raise TypeError("Invalid operand. Expected int or float.")
-        return math.ceil(arg)
-
-    def trunc(self, arg: Union[int, float]):
+    def trunc(self, arg: Union[int, float]) -> int:
         if arg is None:
             raise ValueError("Error: Argument cannot be None")
         if not isinstance(arg, (int, float)):
             raise TypeError("Invalid operand. Expected int or float.")
         return math.trunc(arg)
 
-    def sqrt(self, arg: Union[int, float]):
+    def sqrt(self, arg: Union[int, float]) -> float:
         if arg is None:
             raise ValueError("Error: Argument cannot be None")
         if not isinstance(arg, (int, float)):
@@ -654,7 +684,7 @@ class MathFunctions:
             raise ValueError("Error: Cannot calculate square root of a negative number")
         return math.sqrt(arg)
 
-    def log(self, arg: Union[int, float]):
+    def log(self, arg: Union[int, float]) -> float:
         if arg is None:
             raise ValueError("Error: Argument cannot be None")
         if not isinstance(arg, (int, float)):
@@ -677,31 +707,7 @@ class MathFunctions:
             raise TypeError("Invalid operand. Expected int or float.")
         return +arg
 
-    def to_int(self, arg: Union[int, float]) -> int:
-        """
-        Convert the argument to an integer.
-
-        Args:
-            arg: The argument.
-
-        Returns:
-            The converted integer value.
-
-        Raises:
-            TypeError: If arg is not an int or float.
-        """
-        if not isinstance(arg, (int, float)):
-            raise TypeError(f"Invalid type. Expected int or float, received {type(arg).__name__}.")
-        return int(arg)
-
-    def to_float(self, arg: Union[int, float]) -> Union[int, float]:
-        if arg is None:
-            raise ValueError("Error: Argument cannot be None")
-        if not isinstance(arg, (int, float)):
-            raise TypeError("Invalid type. Expected int or float.")
-        return float(arg)
-
-    def calculate(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+    def add(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
             raise ValueError("Error: Operands cannot be None")
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
@@ -734,7 +740,7 @@ class MathFunctions:
         result = 1
         for arg in args:
             result *= arg
-        return 1 if result == 0 else result
+        return result
 
     def pow(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
@@ -756,7 +762,7 @@ class MathFunctions:
             raise ValueError("Error: Exponentiation result is below the minimum limit of float")
         return result
 
-    def mod(self, arg1: Union[int, float], arg2: Union[int, float]):
+    def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
         if arg2 == 0:
