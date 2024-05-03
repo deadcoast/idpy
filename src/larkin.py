@@ -1,11 +1,20 @@
-from functools import wraps
 import logging
+import traceback
+import datetime
 import argparse
 import ast
 import math
 import os
 import sys
+import tokenize
+from functools import wraps
+import tokenize
+from functools import wraps
 
+from lark import Lark, Transformer
+from typing import List, Union
+
+# src/larkin.py
 from lark import Lark, Transformer
 from typing import List, Union
 
@@ -46,7 +55,16 @@ parser = Lark(grammar, parser="lalr", transformer=Transformer)
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
 
-import tokenize
+grammar = """
+start: expression
+expression: term
+term: factor
+factor: NUMBER
+"""
+
+parser = Lark(grammar, parser="lalr")
+result = parser.parse("2 + 3 * (4 - 1)")
+print(result)  # Output: 11
 
 
 def execfile(file, glob=None, loc=None):
@@ -97,142 +115,9 @@ if input_dir == "Default directory path" or output_dir == "Default directory pat
     print("Invalid directory path provided. Exiting...")
     exit(1)
 
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-              | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
-
-grammar = """
-?start: expression
-?expression: term
-           | expression "+" term   -> add
-           | expression "-" term   -> sub
-?term: factor
-      | term "*" factor  -> mul
-      | term "/" factor  -> div
-?factor: NUMBER           -> number
-       | "(" expression ")"
-NUMBER: /[0-9]+/
-%import common.WS
-%ignore WS
-"""
-
-parser = Lark(grammar, parser="lalr", transformer=Transformer)
-result = parser.parse("2 + 3 * (4 - 1)")
-print(result)  # Output: 11](<from lark import Lark, Transformer
+if input_dir == "Error: Directory is not readable" or output_dir == "Error: Directory is not readable":
+    print("Directory is not readable. Exiting...")
+    exit(1)
 
 grammar = """
 ?start: expression
@@ -396,7 +281,7 @@ class DivisionByZeroError(Exception):
         return self.__message
 
     @message.setter
-    def message(self, message, MAX_MESSAGE_LENGTH=None):
+    def message(self, message):
         """
         Set the error message.
 
@@ -404,36 +289,52 @@ class DivisionByZeroError(Exception):
             message (str): The error message.
 
         Raises:
-            ValueError: If the message is empty, too long, contains special characters, or contains sensitive information.
+            ValueError: If the message is empty, contains special characters, or contains sensitive information.
         """
         if not isinstance(message, str):
             raise ValueError("Message must be a string")
         if message == "":
             raise ValueError("Message cannot be empty")
-        if len(message) > MAX_MESSAGE_LENGTH:
-            raise ValueError("Message is too long")
         if any(char in message for char in "!@#$%^&*()"):
             raise ValueError("Message contains special characters")
-        if "sensitive" in message:
-            raise ValueError("Sensitive information not allowed in message")
         self.__message = message
 
-    @message.setter
-    def message(self, message):
+    def log_error(self, error_message=None, logger=None):
         """
-        Set the error message.
-        """
-        if not isinstance(message, str):
-            raise ValueError("Message must be a string")
-        if self.__class__.__name__ == "InvalidArgumentsError" and message == "":
-            raise ValueError("Message cannot be empty")
-        self.__message = message
+        Log the error with additional information.
 
-    def log_error(self):
+        Args:
+            error_message (str, optional): The error message. Defaults to None.
+            logger (Logger, optional): An instance of a logger. Defaults to None.
+
+        Returns:
+            str: The error message.
         """
-        Log the error.
+        if logger is None:
+            # code to initialize a standard logger
+            pass
+
+        if error_message is None:
+            error_message = self.message
+
+        error_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        error_function = traceback.extract_stack()[-2].name
+        error_variables = self.get_error_variables()  # Custom method to get relevant variables
+
+        log_message = f"Error occurred at {error_time} in function {error_function}. Error message: {error_message}. Relevant variables: {error_variables}"
+
+        logging.error(log_message)
+
+        return error_message
+
+    def get_error_variables(self):
         """
-        # code to log the error
+        Get the values of relevant variables at the time of the error.
+
+        Returns:
+            str: A string representation of the relevant variables.
+        """
+        # code to get the values of relevant variables
         pass
 
 
@@ -456,8 +357,12 @@ class CalculateTree(Transformer):
     def validate_args_with_zero_check(func):
         @wraps(func)
         def wrapper(self, arg1: Union[int, float], arg2: Union[int, float]):
+            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+                raise TypeError("Invalid operands. Expected int or float.")
+            if arg1 is None or arg2 is None:
+                raise ValueError("Error: Operands cannot be None")
             if arg2 == 0:
-                raise self.DivisionByZeroError("Error: Division by zero")
+                raise ZeroDivisionError("Error: Division by zero")
             return func(self, arg1, arg2)
 
         return wrapper
@@ -473,13 +378,12 @@ class CalculateTree(Transformer):
             Union[int, float]: The input number.
 
         Raises:
-            InvalidArgumentsError: If the input is not exactly one argument.
             TypeError: If the input is not of type int or float.
         """
-        if arg is None:
-            raise self.InvalidArgumentsError("Expected exactly 1 argument")
+        if arg == None:
+            return None
         if not isinstance(arg, (int, float)):
-            raise TypeError("Invalid operand. Expected int or float.")
+            return float(arg)
         return arg
 
     def __call__(self, args: List[Union[int, float]]) -> Union[int, float]:
@@ -529,29 +433,61 @@ class CalculateTree(Transformer):
         return result
 
     def __add__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None:
-            raise ValueError("Error: Arguments cannot be None")
-        if len(args) != 2 or (not all((isinstance(arg, (int, float)) for arg in args))):
+        if args is None or len(args) == 0:
+            raise ValueError("Error: Arguments cannot be None or empty")
+        if len(args) != 2 or (not all(isinstance(arg, (int, float)) for arg in args)):
             raise ValueError("Error: Expected exactly 2 arguments of type int or float")
-    (arg1, arg2) = args
-    if None in args:
-            raise ValueError("Error: Operands cannot be None")
-        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-            raise TypeError("Invalid operands. Expected int or float.")
-        result = arg1 + arg2
-    if isinstance(result, int) and result > sys.maxsize:
-            raise ValueError("Error: Addition result exceeds maximum limit of int")
+        result = args[0] + args[1]
+        if isinstance(result, int) and (result > sys.maxsize or result < -sys.maxsize):
+            raise ValueError("Error: Addition result exceeds maximum or minimum limit of int")
         elif isinstance(result, float) and (
                 result > sys.float_info.max or result < -sys.float_info.max
         ):
-            raise ValueError("Error: Addition result exceeds maximum limit of float")
-        if isinstance(result, int) and result < -sys.maxsize:
-            raise ValueError("Error: Addition result is below the minimum limit of int")
-        elif isinstance(result, float) and (
-                result > -sys.float_info.max or result < sys.float_info.max
-        ):
-            raise ValueError("Error: Addition result is below the minimum limit of float")
-    return result
+            raise ValueError("Error: Addition result exceeds maximum or minimum limit of float")
+        return result
+    (arg1, arg2) = args
+    if len(args) != 2 or None in args:
+        raise ValueError("Error: Operands cannot be None")
+    result = arg1 + arg2
+    if isinstance(result, int) and (result > sys.maxsize or result < -sys.maxsize):
+        raise ValueError("Error: Addition result exceeds maximum or minimum limit of int")
+    elif isinstance(result, float) and (
+            result > sys.float_info.max or result < -sys.float_info.max
+    ):
+        raise ValueError("Error: Addition result exceeds maximum or minimum limit of float")
+    
+    def __rpow__(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        if arg1 is None or arg2 is None:
+            raise ValueError("Error: Arguments cannot be None")
+        if len([arg1, arg2]) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if not all(isinstance(arg, (int, float)) for arg in [arg1, arg2]):
+            raise TypeError("Invalid operands. Expected int or float.")
+        try:
+            return self.pow([arg2, arg1])
+        except Exception as e:
+            raise ValueError("Error occurred during exponentiation: " + str(e))
+
+    def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
+        # Suggestion 2: Reverse the order of arguments
+        args = [args[1], args[0]]
+    
+        try:
+            # Suggestion 4: Validate input arguments
+            if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
+                raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
+        
+            # Original power operation code
+            return self.__pow__(args)
+    
+        except Exception as e:
+            # Suggestion 3: Handle exceptions and provide meaningful error message
+            raise ValueError("Error occurred during exponentiation: " + str(e))
+    def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
+        return self.__add__(args)
+
+    def __rsub__(self, args: List[Union[int, float]]) -> Union[int, float]:
+        return self.__sub__(args)
 
     def __truediv__(self, args: List[Union[int, float]]) -> Union[int, float]:
         try:
@@ -581,64 +517,6 @@ class CalculateTree(Transformer):
         except Exception as e:
             raise ValueError("Error: Failed to perform exponentiation.")
 
-    def __rpow__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
-            raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        if hasattr(self, "pow"):
-            try:
-                if args is None:
-                    raise ValueError("Error: Arguments cannot be None")
-                if not args:
-                    return 1
-                return self.pow(args)
-            except Exception as e:
-                ...
-        else:
-            raise AttributeError("Error: 'pow' method does not exist")
-
-    def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if (
-                args is None
-                or len(args) != 2
-                or not all(isinstance(arg, (int, float)) for arg in args)
-        ):
-            raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        try:
-            if hasattr(self, "add"):
-                result = self.add(args)
-                if isinstance(result, int) and (
-                        result > sys.maxsize or result < -sys.maxsize
-                ):
-                    raise ValueError(
-                        "Error: Addition result exceeds the maximum or minimum limit of int"
-                    )
-                elif isinstance(result, float) and (
-                        result > sys.float_info.max or result < -sys.float_info.max
-                ):
-                    raise ValueError(
-                        "Error: Addition result exceeds the maximum or minimum limit of float"
-                    )
-                return result
-            else:
-                raise AttributeError("Error: 'add' method does not exist")
-        except Exception as e:
-            raise ValueError("Error occurred during addition: " + str(e))
-
-    def __rsub__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
-            raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        if hasattr(self, "sub"):
-            arg1, arg2 = args
-            return self.sub([arg2, arg1])
-        else:
-            raise AttributeError("Error: 'sub' method does not exist")
-        try:
-            return self.sub(args)
-        except Exception as e:
-            raise ValueError(
-                "Error: Subtraction operation failed. Invalid operands or unsupported types."
-            )
-
     def __rmul__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
             raise ValueError("Error: Arguments cannot be None")
@@ -653,24 +531,6 @@ class CalculateTree(Transformer):
                 ...
         else:
             raise AttributeError("Error: 'mul' method does not exist or is not callable")
-
-    def __rtruediv__(self, *args: Union[int, float]) -> float:
-        if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
-            raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        try:
-            return self.div([args[1], args[0]])
-        except Exception as e:
-            raise ValueError("Error: Failed to perform division operation.")
-
-    def __rpow__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if args is None:
-            raise ValueError("Error: Arguments cannot be None")
-        if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
-            raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-        try:
-            return self.pow(args)
-        except Exception as e:
-            raise ValueError("Error: Failed to perform power operation.")
 
     def __rmod__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
@@ -751,24 +611,6 @@ class CalculateTree(Transformer):
         if len(args) != 1:
             return sum(args)
         return +args[0]
-
-    def __round__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        if len(args) != 1:
-            raise self.InvalidArgumentsError("Expected exactly 1 argument")
-        if args[0] is None:
-            raise ValueError("Error: Argument cannot be None")
-        if not isinstance(args[0], (int, float)):
-            raise TypeError("Invalid argument type. Expected int or float.")
-        try:
-            return round(args[0])
-        except Exception as e:
-            print(f"Error occurred during rounding: {e}")
-
-    def __floor__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return math.floor(args[0])
-
-    def __ceil__(self, args: List[Union[int, float]]) -> Union[int, float]:
-        return math.ceil(args[0])
 
     def __int__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return int(args[0])
