@@ -1,4 +1,3 @@
-
 grammar = """
     start: expr
     expr: atom
@@ -14,22 +13,23 @@ grammar = """
     %ignore WS
 """
 
+
 class CalculateTreeMethod(Transformer):
     def __init__(self):
-        self.parser = Lark(grammar, parser='lalr', transformer=self)
+        self.parser = Lark(grammar, parser="lalr", transformer=self)
         self.result = None
 
     def __call__(self, args: List[Union[int, float]]) -> Union[int, float]:
         method_name = self.parser.parse_args().method_name
-        if method_name == 'add':
+        if method_name == "add":
             return self.add(args)
-        elif method_name == 'sub':
+        elif method_name == "sub":
             return self.sub(args)
-        elif method_name == 'mul':
+        elif method_name == "mul":
             return self.mul(args)
-        elif method_name == 'div':
+        elif method_name == "div":
             return self.div(args)
-        elif method_name == 'pow':
+        elif method_name == "pow":
             return self.pow(args)
         else:
             raise ValueError(f"Invalid method name: {method_name}")
@@ -58,6 +58,6 @@ class CalculateTreeMethod(Transformer):
             raise ValueError("Invalid number format") from e
 
 
-parser = Lark(grammar, parser='lalr', transformer=CalculateTreeMethod())
+parser = Lark(grammar, parser="lalr", transformer=CalculateTreeMethod())
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
