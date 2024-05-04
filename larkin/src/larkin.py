@@ -1090,12 +1090,26 @@ class CeilClass:
             raise TypeError("Invalid operands. Expected int or float.")
         return math.ceil(self[0])
 
+class MyClass:
     def ceil_floor(self) -> Union[int, float]:
-        if len(self) != 1:
-            raise ValueError("Error: Expected exactly 1 argument")
-        if None in self:
-            raise ValueError("Error: Operands cannot be None")
-        if not all(isinstance(arg, (int, float)) for arg in args):
+        """
+        This method returns the floor value of the first element in the list.
+        """
+        # Suggestion 4: Check if self is an instance of int or float
+        if not isinstance(self, (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
-        return math.floor(self[0])
+
+        # Suggestion 1: Use self instead of args in isinstance check
+        if not all(isinstance(arg, (int, float)) for arg in self):
+            raise TypeError("Invalid operands. Expected int or float.")
+
+        # Suggestion 2: Check if self[0] is None instead of None in self
+        if self[0] is None:
+            raise ValueError("Error: Operands cannot be None")
+
+        # Suggestion 5: Use assert for precondition checks
+        assert len(self) == 1, "Error: Expected exactly 1 argument"
+
+        # Suggestion 3: Use math.floor(self) instead of math.floor(self[0])
+        return math.floor(self)
 
