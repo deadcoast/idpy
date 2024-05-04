@@ -776,12 +776,7 @@ class CalculateTree(Transformer):
     if len(args) != 2 or None in args:
         raise ValueError("Error: Operands cannot be None")
     result = arg1 + arg2
-    if isinstance(result, int) and (result > sys.maxsize or result < -sys.maxsize):
-        raise ValueError("Error: Addition result exceeds maximum or minimum limit of int")
-    elif isinstance(result, float) and (
-            result > sys.float_info.max or result < -sys.float_info.max
-    ):
-        raise ValueError("Error: Addition result exceeds maximum or minimum limit of float")
+
 
     def __rpow__(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
@@ -1104,24 +1099,3 @@ class CeilClass:
             raise TypeError("Invalid operands. Expected int or float.")
         return math.floor(self[0])
 
-    def ceil_pow(self) -> Union[int, float]:
-        if len(self) != 2:
-            raise ValueError("Error: Expected exactly 2 arguments")
-        if None in self:
-            raise ValueError("Error: Operands cannot be None")
-        if not all(isinstance(arg, (int, float)) for arg in args):
-            raise TypeError("Invalid operands. Expected int or float.")
-        result = self[0] ** self[1]
-        if isinstance(result, int) and result > sys.maxsize:
-            raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
-        elif isinstance(result, float) and (
-                result > sys.float_info.max or result < -sys.float_info.max
-        ):
-            raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
-        if isinstance(result, int) and result < -sys.maxsize:
-            raise ValueError("Error: Exponentiation result is below the minimum limit of int")
-        elif isinstance(result, float) and (
-                result > -sys.float_info.max or result < sys.float_info.max
-        ):
-            raise ValueError("Error: Exponentiation result is below the minimum limit of float")
-        return pow(self[0], self[1])
