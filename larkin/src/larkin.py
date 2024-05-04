@@ -1046,10 +1046,11 @@ class NumberOperations:
 
     @check_none
     def ceil(self, arg1: Union[int, float]) -> Union[int, float]:
+        if arg1 is None:
+            raise ValueError("Error: Argument cannot be None")
         if not isinstance(arg1, (int, float)):
-            raise TypeError("Invalid operands. Expected int or float.")
-        result = math.ceil(arg1)
-        return int(result) if result.is_integer() else result
+            raise ValueError("Invalid operands. Expected int or float.")
+        return math.ceil(arg1)
 
     @check_none
     @validate_result
@@ -1095,21 +1096,22 @@ class MyClass:
         """
         This method returns the floor value of the first element in the list.
         """
-        # Suggestion 4: Check if self is an instance of int or float
-        if not isinstance(self, (int, float)):
-            raise TypeError("Invalid operands. Expected int or float.")
+        # Suggestion 5: Check if self is an instance of list
+        if not isinstance(self, list):
+            raise TypeError("Invalid operands. Expected list.")
 
         # Suggestion 1: Use self instead of args in isinstance check
-        if not all(isinstance(arg, (int, float)) for arg in self):
+        if not isinstance(self[0], (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
 
-        # Suggestion 2: Check if self[0] is None instead of None in self
-        if self[0] is None:
+        # Suggestion 2: Check if self is empty instead of checking if self[0] is None
+        if not self:
             raise ValueError("Error: Operands cannot be None")
 
         # Suggestion 5: Use assert for precondition checks
-        assert len(self) == 1, "Error: Expected exactly 1 argument"
+        if len(self) != 1:
+            raise ValueError("Error: Expected exactly 1 argument")
 
         # Suggestion 3: Use math.floor(self) instead of math.floor(self[0])
-        return math.floor(self)
+        return math.floor(self[0])
 
