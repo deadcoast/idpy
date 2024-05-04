@@ -777,7 +777,6 @@ class CalculateTree(Transformer):
         raise ValueError("Error: Operands cannot be None")
     result = arg1 + arg2
 
-
     def __rpow__(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
             raise ValueError("Error: Arguments cannot be None")
@@ -1017,14 +1016,18 @@ def validate_result(func):
         ):
             raise ValueError("Error: Result exceeds the maximum or minimum limit of float")
         return result
+
     return wrapper
+
 
 def check_none(func):
     def wrapper(self, *args, **kwargs):
         if None in args or None in kwargs.values():
             raise ValueError("Error: Arguments cannot be None")
         return func(self, *args, **kwargs)
+
     return wrapper
+
 
 class NumberOperations:
 
@@ -1091,6 +1094,7 @@ class CeilClass:
             raise TypeError("Invalid operands. Expected int or float.")
         return math.ceil(self[0])
 
+
 class MyClass:
     def ceil_floor(self) -> Union[int, float]:
         """
@@ -1114,4 +1118,3 @@ class MyClass:
 
         # Suggestion 3: Use math.floor(self) instead of math.floor(self[0])
         return math.floor(self[0])
-
