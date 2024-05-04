@@ -501,6 +501,11 @@ grammar = """
     %ignore WS
 """
 
+
+class CalculateTree:
+    pass
+
+
 parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
@@ -592,36 +597,36 @@ class MathFloorFunctions:
             raise TypeError("Invalid operands. Expected int or float.")
         return int(args[0])
 
-    class MathFunctions:
+class MathFunctions:
 
-        def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
-            """
-            This method performs the modulo operation on two arguments.
+    def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        """
+        This method performs the modulo operation on two arguments.
 
-            It raises a ValueError if the second argument is zero.
-            Args:
-                arg1 (int or float): The first argument.
-                arg2 (int or float): The second argument.
-            Returns:
-                int or float: The result of the modulo operation.
-            Raises:
-                ValueError: If the arguments are not of type int or float.
-                ValueError: If the second argument is zero.
-                ValueError: If `arg1` is `None`.
-                ValueError: If `arg2` is `None`.
-            Example:
-                >>> obj = MathFunctions()
-                >>> obj.mod(5, 2)
-                1
-            """
-            if arg1 is None or arg2 is None:
-                raise ValueError("Error: Arguments cannot be None")
-            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-                raise TypeError("Invalid operands. Expected int or float.")
-            if arg2 == 0:
-                raise ValueError("Error: Division by zero")
-            result = arg1 % arg2
-            return int(result) if isinstance(result, int) else result
+        It raises a ValueError if the second argument is zero.
+        Args:
+            arg1 (int or float): The first argument.
+            arg2 (int or float): The second argument.
+        Returns:
+            int or float: The result of the modulo operation.
+        Raises:
+            ValueError: If the arguments are not of type int or float.
+            ValueError: If the second argument is zero.
+            ValueError: If `arg1` is `None`.
+            ValueError: If `arg2` is `None`.
+        Example:
+            >>> obj = MathFunctions()
+            >>> obj.mod(5, 2)
+            1
+        """
+        if arg1 is None or arg2 is None:
+            raise ValueError("Error: Arguments cannot be None")
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if arg2 == 0:
+            raise ValueError("Error: Division by zero")
+        result = arg1 % arg2
+        return int(result) if isinstance(result, int) else result
 
 
 def ceil(arg: Union[int, float]) -> int:
@@ -1056,7 +1061,24 @@ class CalculateTree(Transformer):
             raise TypeError("Invalid operands. Expected int or float.")
         return math.floor(self[0])
 
-    return MathFloorFunctions()
-
-
-
+    def pow(self) -> Union[int, float]:
+        if len(self) != 2:
+            raise ValueError("Error: Expected exactly 2 arguments")
+        if None in self:
+            raise ValueError("Error: Operands cannot be None")
+        if not all(isinstance(arg, (int, float)) for arg in args):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = self[0] ** self[1]
+        if isinstance(result, int) and result > sys.maxsize:
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
+        if isinstance(result, int) and result < -sys.maxsize:
+            raise ValueError("Error: Exponentiation result is below the minimum limit of int")
+        elif isinstance(result, float) and (
+                result > -sys.float_info.max or result < sys.float_info.max
+        ):
+            raise ValueError("Error: Exponentiation result is below the minimum limit of float")
+        return pow(self[0], self[1])
