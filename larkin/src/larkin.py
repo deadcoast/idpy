@@ -809,7 +809,7 @@ class CalculateTree(Transformer):
 
         except Exception as e:
             # Suggestion 3: Handle exceptions and provide meaningful error message
-            raise ValueError("Error occurred during exponentiation: {str(e)}") from e
+            raise ValueError("Error occurred during exponentiation: {str(e)}")
 
     def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return self.__add__(args)
@@ -829,7 +829,7 @@ class CalculateTree(Transformer):
         except ZeroDivisionError as e:
             raise ValueError("Error: Division by zero")
         except TypeError as e:
-            raise TypeError("Invalid operands. Expected int or float.") from e
+            raise TypeError("Invalid operands. Expected int or float.")
         except ValueError as e:
             raise ValueError("Invalid arguments.")
         except Exception as e:
@@ -843,7 +843,7 @@ class CalculateTree(Transformer):
         try:
             return self.tree_pow()
         except Exception as e:
-            raise ValueError("Error: Failed to perform exponentiation.") from e
+            raise ValueError("Error: Failed to perform exponentiation.")
 
     def __rmul__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
@@ -868,7 +868,7 @@ class CalculateTree(Transformer):
         try:
             return self.mod(args)
         except Exception as e:
-            raise ValueError("Error: Failed to perform modulo operation.") from e
+            raise ValueError("Error: Failed to perform modulo operation.")
 
     def __invert__(self, args: List[Union[int, float]]) -> Union[int, float]:
         if args is None:
