@@ -1,3 +1,4 @@
+from numbers import Number
 import argparse
 import ast
 import datetime
@@ -56,7 +57,6 @@ expression: term
 term: factor
 factor: NUMBER
 """
-
 
 output_dir = (args.export_dir,)
 if not os.path.exists(input_dir):
@@ -344,6 +344,8 @@ class DivisionByZeroError(Exception):
         """
         # code to get the values of relevant variables
         pass
+
+
 class MathFunctions:
 
     def trunc(self, arg: Union[int, float]) -> int:
@@ -463,6 +465,11 @@ grammar = """
     %ignore WS
 """
 
+
+class CalculateTree:
+    pass
+
+
 parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
 result = parser.parse("2 + 3 * (4 - 1)")
 print(result)  # Output: 11
@@ -481,6 +488,11 @@ grammar = """
     %import common.WS
     %ignore WS
 """
+
+
+class CalculateTree:
+    pass
+
 
 parser = Lark(grammar, parser="lalr", transformer=CalculateTree())
 result = parser.parse("2 + 3 * (4 - 1)")
@@ -597,7 +609,8 @@ class MathFloorFunctions:
             raise TypeError("Invalid operands. Expected int or float.")
         return int(args[0])
 
-class MathFunctions:
+
+class MathModFunctions:
 
     def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         """
@@ -659,10 +672,12 @@ class CalculateTree(Transformer):
 
     def validate_args(func):
         @wraps(func)
-        def wrapper(self, *args: Union[int, float]):
-            if len(args) != 2 or not all(isinstance(arg, (int, float)) for arg in args):
-                raise self.InvalidArgumentsError("Expected exactly 2 arguments of type int or float")
-            return func(self, *args)
+        def wrapper(self, arg1: Number, arg2: Number):
+            if arg1 is None or arg2 is None:
+                raise ValueError("Error: Operands cannot be None")
+            if arg2 == 0:
+                raise ZeroDivisionError("Error: Division by zero")
+            return func(self, arg1, arg2)
 
         return wrapper
 
@@ -756,6 +771,7 @@ class CalculateTree(Transformer):
         ):
             raise ValueError("Error: Addition result exceeds maximum or minimum limit of float")
         return result
+
     (arg1, arg2) = args
     if len(args) != 2 or None in args:
         raise ValueError("Error: Operands cannot be None")
@@ -766,7 +782,7 @@ class CalculateTree(Transformer):
             result > sys.float_info.max or result < -sys.float_info.max
     ):
         raise ValueError("Error: Addition result exceeds maximum or minimum limit of float")
-    
+
     def __rpow__(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
         if arg1 is None or arg2 is None:
             raise ValueError("Error: Arguments cannot be None")
@@ -793,7 +809,8 @@ class CalculateTree(Transformer):
 
         except Exception as e:
             # Suggestion 3: Handle exceptions and provide meaningful error message
-            raise ValueError(f"Error occurred during exponentiation: {str(e)}")(e)
+            raise ValueError("Error occurred during exponentiation: {str(e)}")
+
     def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return self.__add__(args)
 
@@ -879,6 +896,7 @@ class CalculateTree(Transformer):
         if not all(isinstance(arg, (int, float)) for arg in args):
             raise TypeError("Invalid operands. Expected int or float.")
         return round(args[0])
+
     def mul(self) -> Union[int, float]:
         if len(self) != 2:
             raise ValueError("Error: Expected exactly 2 arguments")
@@ -912,7 +930,7 @@ class CalculateTree(Transformer):
             raise ValueError("Error: Operands cannot be None")
         if not all(isinstance(arg, (int, float)) for arg in args):
             raise TypeError("Invalid operands. Expected int or float.")
-        result = self[0]**self[1]
+        result = self[0] ** self[1]
         if isinstance(result, int) and result > sys.maxsize:
             raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
         elif isinstance(result, float) and (
@@ -955,7 +973,7 @@ class CalculateTree(Transformer):
             raise ValueError(
                 "Error: Division result is below the minimum limit of float"
 
-        )
+            )
         return result
 
     def mod(self) -> Union[int, float]:
