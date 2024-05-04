@@ -1,4 +1,3 @@
-from numbers import Number
 import argparse
 import ast
 import datetime
@@ -8,12 +7,13 @@ import math
 import os
 import sys
 import tokenize
-import traceback
 from functools import wraps
+from numbers import Number
+from typing import List, Union
 
 # src/larkin.py
 from lark import Lark, Transformer
-from typing import List, Union
+from numpy import size
 
 grammar = """
 ?start: expression
@@ -791,9 +791,9 @@ class CalculateTree(Transformer):
         if not all(isinstance(arg, (int, float)) for arg in [arg1, arg2]):
             raise TypeError("Invalid operands. Expected int or float.")
         try:
-            return self.pow([arg2, arg1])
+            return self.tree_pow()
         except Exception as e:
-            raise ValueError(f"Error occurred during exponentiation: {str(e)}") from e
+            raise ValueError("Error occurred during exponentiation: {str(e)}")
 
     def pow(self, args: List[Union[int, float]]) -> Union[int, float]:
         # Suggestion 2: Reverse the order of arguments
@@ -809,7 +809,7 @@ class CalculateTree(Transformer):
 
         except Exception as e:
             # Suggestion 3: Handle exceptions and provide meaningful error message
-            raise ValueError("Error occurred during exponentiation: {str(e)}")
+            raise ValueError("Error occurred during exponentiation: {str(e)}") from e
 
     def __radd__(self, args: List[Union[int, float]]) -> Union[int, float]:
         return self.__add__(args)
@@ -829,7 +829,7 @@ class CalculateTree(Transformer):
         except ZeroDivisionError as e:
             raise ValueError("Error: Division by zero")
         except TypeError as e:
-            raise TypeError("Invalid operands. Expected int or float.")
+            raise TypeError("Invalid operands. Expected int or float.") from e
         except ValueError as e:
             raise ValueError("Invalid arguments.")
         except Exception as e:
@@ -841,7 +841,7 @@ class CalculateTree(Transformer):
         if not all(isinstance(arg, (int, float)) for arg in args):
             raise TypeError("Invalid operands. Expected int or float.")
         try:
-            return self.pow(args)
+            return self.tree_pow()
         except Exception as e:
             raise ValueError("Error: Failed to perform exponentiation.") from e
 
@@ -923,7 +923,7 @@ class CalculateTree(Transformer):
             )
         return result
 
-    def pow(self) -> Union[int, float]:
+    def tree_pow(self) -> Union[int, float]:
         if len(self) != 2:
             raise ValueError("Error: Expected exactly 2 arguments")
         if None in self:
@@ -1011,66 +1011,91 @@ class CalculateTree(Transformer):
             raise TypeError("Invalid operands. Expected int or float.")
         return math.floor(self[0])
 
-    class MathFunctions:
 
-        def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
-            if arg1 is None or arg2 is None:
-                raise ValueError("Error: Arguments cannot be None")
-            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-                raise TypeError("Invalid operands. Expected int or float.")
-            if arg2 == 0:
-                raise ValueError("Error: Division by zero")
-            result = arg1 % arg2
-            return int(result) if isinstance(result, int) else result
+def validate_result(func):
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        if isinstance(result, int) and (result > sys.maxsize or result < -sys.maxsize):
+            raise ValueError("Error: Result exceeds the maximum or minimum limit of int")
+        elif isinstance(result, float) and (
+                result > sys.float_info.max or result < -sys.float_info.max
+        ):
+            raise ValueError("Error: Result exceeds the maximum or minimum limit of float")
+        return result
+    return wrapper
 
-        def floor(self, arg1: Union[int, float]) -> Union[int, float]:
-            if arg1 is None:
-                raise ValueError("Error: Arguments cannot be None")
-            if not isinstance(arg1, (int, float)):
-                raise TypeError("Invalid operands. Expected int or float.")
-            result = math.floor(arg1)
-            return int(result) if isinstance(result, int) else result
+def check_none(func):
+    def wrapper(self, *args, **kwargs):
+        if None in args or None in kwargs.values():
+            raise ValueError("Error: Arguments cannot be None")
+        return func(self, *args, **kwargs)
+    return wrapper
 
-        def ceil(self, arg1: Union[int, float]) -> Union[int, float]:
-            if arg1 is None:
-                raise ValueError("Error: Arguments cannot be None")
-            if not isinstance(arg1, (int, float)):
-                raise TypeError("Invalid operands. Expected int or float.")
-            result = math.ceil(arg1)
-            return int(result) if isinstance(result, int) else result
+class NumberOperations:
 
-        def pow(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
-            if arg1 is None or arg2 is None:
-                raise ValueError("Error: Operands cannot be None")
-            if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
-                raise TypeError("Invalid operands. Expected int or float.")
-            result = arg1 ** arg2
-            if isinstance(result, int) and result > sys.maxsize:
-                raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
-            elif isinstance(result, float) and (
-                    result > sys.float_info.max or result < -sys.float_info.max
-            ):
-                raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
-            if isinstance(result, int) and result < -sys.maxsize:
-                raise ValueError("Error: Exponentiation result is below the minimum limit of int")
-            elif isinstance(result, float) and (
-                    result > -sys.float_info.max or result < sys.float_info.max
-            ):
-                raise ValueError("Error: Exponentiation result is below the minimum limit of float")
-            return result
+    @check_none
+    def mod(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        if arg2 == 0:
+            raise ValueError("Error: Division by zero")
+        result = arg1 % arg2
+        return int(result) if result.is_integer() else result
 
-    math = MathFunctions()
+    @check_none
+    def floor(self, arg1: Union[int, float]) -> Union[int, float]:
+        if not isinstance(arg1, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = math.floor(arg1)
+        return int(result) if result.is_integer() else result
 
+    @check_none
+    def ceil(self, arg1: Union[int, float]) -> Union[int, float]:
+        if not isinstance(arg1, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = math.ceil(arg1)
+        return int(result) if result.is_integer() else result
+
+    @check_none
+    @validate_result
+    def pow(self, arg1: Union[int, float], arg2: Union[int, float]) -> Union[int, float]:
+        if not isinstance(arg1, (int, float)) or not isinstance(arg2, (int, float)):
+            raise TypeError("Invalid operands. Expected int or float.")
+        result = arg1 ** arg2
+        if isinstance(result, int) and result > float('inf'):
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of int")
+        elif isinstance(result, float) and (
+                result > float('inf') or result < float('-inf')
+        ):
+            raise ValueError("Error: Exponentiation result exceeds maximum limit of float")
+        if isinstance(result, int) and result < float('-inf'):
+            raise ValueError("Error: Exponentiation result is below the minimum limit of int")
+        elif isinstance(result, float) and (
+                result > float('-inf') or result < float('inf')
+        ):
+            raise ValueError("Error: Exponentiation result is below the minimum limit of float")
+        return result
+
+
+math = MathFunctions()
+
+
+class CeilClass:
     def ceil(self) -> Union[int, float]:
+        """
+        Returns the smallest integer greater than or equal to the operand.
+        """
+        if not isinstance(self, list):
+            raise TypeError("Invalid type. Expected list.")
         if len(self) != 1:
             raise ValueError("Error: Expected exactly 1 argument")
-        if None in self:
+        if self[0] is None:
             raise ValueError("Error: Operands cannot be None")
-        if not all(isinstance(arg, (int, float)) for arg in args):
+        if not isinstance(self[0], (int, float)):
             raise TypeError("Invalid operands. Expected int or float.")
         return math.ceil(self[0])
 
-    def floor(self) -> Union[int, float]:
+    def ceil_floor(self) -> Union[int, float]:
         if len(self) != 1:
             raise ValueError("Error: Expected exactly 1 argument")
         if None in self:
@@ -1079,7 +1104,7 @@ class CalculateTree(Transformer):
             raise TypeError("Invalid operands. Expected int or float.")
         return math.floor(self[0])
 
-    def pow(self) -> Union[int, float]:
+    def ceil_pow(self) -> Union[int, float]:
         if len(self) != 2:
             raise ValueError("Error: Expected exactly 2 arguments")
         if None in self:
